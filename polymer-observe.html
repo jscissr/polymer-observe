@@ -1,0 +1,160 @@
+<!--
+@license
+Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+<link rel="import" href="../polymer/polymer.html">
+
+<!--
+
+Gives you Object.observe back in Polymer 1.0
+
+Example:
+
+    <dom-module id="demo-element">
+      <template>
+        <polymer-observe property="{{foo}}"></polymer-observe>
+
+        <p>foo.bar.baz: <span>{{foo.bar.baz}}</span>
+      </template>
+    </dom-module>
+
+@demo demo/index.html
+-->
+
+<script>
+(function() {
+
+Polymer({
+  is: 'polymer-observe',
+
+  properties: {
+    /**
+     * Assign the property of your element you want to observe.
+     *
+     * @type {(Object|Array)}
+     */
+    property: {
+      type: Object,
+      notify: true,
+      observer: 'propertyChanged'
+    },
+
+    /**
+     * The internal Observed object.
+     *
+     * @type {?Object}
+     * @private
+     */
+    observed: {
+      type: Object,
+      readOnly: true
+    }
+  },
+
+  /**
+   * Called whenever <code>property</code> changes.
+   * @private
+   */
+  propertyChanged: function(newValue) {
+    if (this.observed) {
+      removeObserved(this.observed);
+      this._setObserved(null);
+    }
+    
+    if (typeof newValue === 'object' && newValue) {
+      this._setObserved(new Observed(this, newValue, 'property'));
+    }
+  }
+});
+
+
+//TODO: handle circular objects (endless loop)?
+
+function Observed(element, object, path) {
+  this.element = element;
+  this.object = object;
+  this.path = path;
+  this.onchange = onchange.bind(this);
+  this.childs = {};
+  
+  if (Array.isArray(object)) {
+    Array.observe(object, this.onchange);
+  } else {
+    Object.observe(object, this.onchange, ['add', 'update', 'delete']);
+  }
+  
+  //recursively observe object childs
+  Object.keys(object).forEach(this.observeChild, this);
+}
+
+function onchange(changes) {
+  if (!this.object) { //the observer was removed
+    return;
+  }
+  for (var i = 0, change; change = changes[i]; i++) {
+    if (change.type === 'splice') {
+      //unobserve removed objects
+      for (var i = change.index; i < change.index + change.removed.length; i++) {
+        this.unobserveChild(i);
+      }
+      
+      //notify polymer
+      this.element._notifySplice(this.object, this.path, change.index,
+          change.addedCount, change.removed);
+      
+      //observe new objects
+      for (var i = change.index; i < change.index + change.addedCount; i++) {
+        this.observeChild(i);
+      }
+    } else {
+      this.unobserveChild(change.name);
+      this.observeChild(change.name);
+      
+      this.element.notifyPath(this.path + '.' + this.toPathName(change.name),
+          this.object[change.name]);
+    }
+  }
+}
+
+Observed.prototype.toPathName = function(name) {
+  if (Array.isArray(this.object)) {
+    //internally, Polymer uses different array keys which don't change with
+    //splice. The original key is not needed, since the internal key is looked
+    //up from the value.
+    return Polymer.Collection.get(this.object).getKey(this.object[name]) || name;
+  }
+  return name;
+};
+
+Observed.prototype.observeChild = function(name) {
+  var val = this.object[name];
+  if (typeof val === 'object' && val) {
+    this.childs[name] = new Observed(this.element, val,
+        this.path + '.' + this.toPathName(name));
+  }
+};
+
+Observed.prototype.unobserveChild = function(name) {
+  if (this.childs.hasOwnProperty(name)) {
+    removeObserved(this.childs[name]);
+    delete this.childs[name];
+  }
+};
+
+function removeObserved(self) {
+  Object.unobserve(self.object, self.onchange);
+  self.object = null;
+  var keys = Object.keys(self.childs);
+  for (var i = 0; i < keys.length; i++) {
+    removeObserved(self.childs[keys[i]]);
+  }
+}
+
+
+})();
+</script>

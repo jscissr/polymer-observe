@@ -1,0 +1,29 @@
+{
+  "name": "polymer-observe",
+  "version": "1.0.0",
+  "authors": [
+    "Jan Schär <jscissr@gmail.com>"
+  ],
+  "description": "Object.observe in Polymer 1.0",
+  "keywords": [
+    "web-component",
+    "web-components",
+    "polymer",
+    "observe"
+  ],
+  "main": "polymer-observe.html",
+  "license": "http://polymer.github.io/LICENSE.txt",
+  "homepage": "https://github.com/jscissr/polymer-observe/",
+  "ignore": [
+    "/.*",
+    "/test/",
+    "/demo/"
+  ],
+  "dependencies": {
+    "polymer": "Polymer/polymer#^1.0.0"
+  },
+  "devDependencies": {
+    "iron-component-page": "PolymerElements/iron-component-page#^1.0.0",
+    "web-component-tester": "*"
+  }
+}

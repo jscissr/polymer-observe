@@ -1,0 +1,171 @@
+<!doctype html>
+<!--
+@license
+Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+
+  <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+  <script src="../../web-component-tester/browser.js"></script>
+
+  <link rel="import" href="../polymer-observe.html">
+</head>
+<body>
+
+
+
+  <dom-module id="demo-element">
+    <template>
+      <span id="a">{{foo.bar.baz}}</span><br>
+      <span id="b">{{foo.arr.0.sub}}</span><br>
+      <template is="dom-repeat" items="{{foo.rep}}">
+        <span class="c">{{item.first}}</span>
+      </template><br>
+      <template is="dom-repeat" items="{{foo.rep2}}">
+        <span class="c2">{{item.first}}</span>
+      </template><br>
+      <template is="dom-repeat" items="{{foo.repSimple}}">
+        <span class="d">{{item}}</span>
+      </template><br>
+      <span id="e">{{top.any}}</span><br>
+      
+      <polymer-observe property="{{foo}}"></polymer-observe>
+      <polymer-observe property="{{top}}"></polymer-observe>
+    </template>
+  </dom-module>
+  <script>
+  Polymer({
+    is: 'demo-element',
+    properties: {
+      foo: {
+        type: Object,
+        value: function() {
+          return {
+            nothing: null,
+            undef: undefined,
+            bar: {
+              baz: 'default'
+            },
+            arr: [
+              {sub: '3'}
+            ],
+            rep: [
+              {first: 'empty1'},
+              {first: 'empty2'},
+              {first: 'empty3'}
+            ],
+            rep2: [
+              {first: 'empty1'},
+              {first: 'empty2'},
+              {first: 'empty3'}
+            ],
+            repSimple: ['init1', 'init2']
+          };
+        }
+      },
+      top: {
+        type: Object,
+        value: function() {
+          return {
+            any: 'old'
+          };
+        }
+      }
+    }
+  });
+  </script>
+  
+  
+  <demo-element></demo-element>
+
+  <script>
+    var myEl = document.querySelector('demo-element');
+
+    suite('<polymer-observe>', function() {
+      test('reports a simple property change', function(done) {
+        myEl.foo.bar.baz = 'new';
+        setTimeout(function() {
+          assert.equal(myEl.$.a.innerHTML, 'new');
+          done();
+        }, 1);
+      });
+      
+      test('reports a property change when a whole object is replaced', function(done) {
+        var before = myEl.foo.arr[0];
+        before.sub = 'y';
+        myEl.foo.arr = [{sub: '4'}];
+        before.sub = 'x'; //shouldn't do anything
+        setTimeout(function() {
+          assert.equal(myEl.$.b.innerHTML, '4');
+          done();
+        }, 1);
+      });
+      
+      test('splice remove 2 add 1', function(done) {
+        var removed = myEl.foo.rep.splice(1, 2, {first: 'new2'});
+        setTimeout(function() {
+          var allC = myEl.querySelectorAll('.c');
+          assert.equal(allC.length, 2);
+          assert.equal(allC[0].innerHTML, 'empty1');
+          assert.equal(allC[1].innerHTML, 'new2');
+          
+          myEl.foo.rep[1].first = 'allnew'; // new spliced in objects are observed
+          
+          removed[0].first = removed[1].first = 'x'; //shouldn't do anything
+          
+          setTimeout(function() {
+            var allC = myEl.querySelectorAll('.c');
+            assert.equal(allC[1].innerHTML, 'allnew');
+            
+            done();
+          }, 1);
+        }, 1);
+      });
+      
+      test('splice remove 1 add 2', function(done) {
+        myEl.foo.rep2.splice(1, 1, {first: 'new2'}, {first: 'new3'});
+        setTimeout(function() {
+          var allC2 = myEl.querySelectorAll('.c2');
+          assert.equal(allC2.length, 4);
+          assert.equal(allC2[0].innerHTML, 'empty1');
+          assert.equal(allC2[1].innerHTML, 'new2');
+          assert.equal(allC2[2].innerHTML, 'new3');
+          assert.equal(allC2[3].innerHTML, 'empty3');
+          
+          done();
+        }, 1);
+      });
+      
+      test('splice string array', function(done) {
+        myEl.foo.repSimple.splice(0, 1, 'new1');
+        setTimeout(function() {
+          var allD = myEl.querySelectorAll('.d');
+          assert.equal(allD.length, 2);
+          assert.equal(allD[0].innerHTML, 'new1');
+          assert.equal(allD[1].innerHTML, 'init2');
+          
+          done();
+        }, 1);
+      });
+      
+      test('top level property change', function(done) {
+        myEl.top = {any: 'new'};
+        setTimeout(function() {
+          assert.equal(myEl.$.e.innerHTML, 'new');
+          done();
+        }, 1);
+      });
+
+    });
+  </script>
+
+</body>
+</html>
