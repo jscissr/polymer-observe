@@ -67,17 +67,16 @@ Polymer({
     }
     
     if (typeof newValue === 'object' && newValue) {
-      this._setObserved(new Observed(this, newValue, 'property'));
+      this._setObserved(new Observed(this, newValue, [], 'property'));
     }
   }
 });
 
 
-//TODO: handle circular objects (endless loop)?
-
-function Observed(element, object, path) {
+function Observed(element, object, parents, path) {
   this.element = element;
   this.object = object;
+  this.parents = parents.concat([object]);
   this.path = path;
   this.onchange = onchange.bind(this);
   this.childs = {};
@@ -133,11 +132,15 @@ Observed.prototype.toPathName = function(name) {
 
 Observed.prototype.observeChild = function(name) {
   var val = this.object[name];
-  if (typeof val === 'object' && val) {
-    this.childs[name] = new Observed(this.element, val,
+  if (typeof val === 'object' && val && this.parents.every(isNotThis, val)) {
+    this.childs[name] = new Observed(this.element, val, this.parents,
         this.path + '.' + this.toPathName(name));
   }
 };
+
+function isNotThis(object) {
+  return object !== this;
+}
 
 Observed.prototype.unobserveChild = function(name) {
   if (this.childs.hasOwnProperty(name)) {

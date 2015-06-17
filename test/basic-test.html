@@ -67,7 +67,8 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
               {first: 'empty2'},
               {first: 'empty3'}
             ],
-            repSimple: ['init1', 'init2']
+            repSimple: ['init1', 'init2'],
+            circular: {second: {}}
           };
         }
       },
@@ -162,6 +163,15 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           assert.equal(myEl.$.e.innerHTML, 'new');
           done();
         }, 1);
+      });
+      
+      test('circular', function(done) {
+        myEl.foo.circular.myself = myEl.foo.circular;
+        myEl.foo.circular.second.first = myEl.foo.circular;
+        myEl.foo.circular.second.foo = myEl.foo;
+        setTimeout(function() {
+          done();
+        }, 100);
       });
 
     });
